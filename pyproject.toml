@@ -1,0 +1,22 @@
+[project]
+name = "bilka-cli"
+version = "0.1.0"
+description = "CLI og MCP-server til Bilka To Go (bilkatogo.dk)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+mcp = ["fastmcp>=2.0"]
+
+[project.scripts]
+bilka = "bilka_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["bilka_cli.py", "server.py"]
