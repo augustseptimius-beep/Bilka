@@ -144,8 +144,17 @@ Bilka To Go kører på tre uafhængige backends:
 | Kurv, ordrer, levering | Iposen (`api.bilkatogo.dk`, PHP) |
 
 Se [`bilka_api.md`](bilka_api.md) for den fulde endpoint-dokumentation,
-inklusive de faldgruber der koster tid — priser er i **øre**, og `count` på
-`ChangeLineCount` er en **relativ** ændring, ikke et absolut antal.
+inklusive de faldgruber der koster tid: priser er i **øre**, `count` på
+`ChangeLineCount` er et **absolut** antal (`count=0` fjerner linjen),
+`eid > 0` betyder ikke nødvendigvis fejl, og Gigya-login må **ikke** sende
+`targetEnv`.
+
+Kurven kommer tilbage i tre lag — kategorigrupper, poster, `orderlines` —
+med gebyrer blandet ind mellem varerne under overskriften "Services".
+
+Alt er afprøvet mod en rigtig konto: login, kurv, tilføj/fjern/sæt antal,
+indkøbslister, favoritter, leveringstider, ordrehistorik og profil.
+`checkout` er som det eneste ikke kørt igennem — det ville koste penge.
 
 Endpointene er reverse engineered fra frontendens JavaScript. Der er intet
 officielt API, så det kan holde op med at virke uden varsel. Projektet er

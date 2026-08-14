@@ -42,8 +42,26 @@ GIGYA_API_KEY = "3_tA6BbV434FQqN73HnUG1KA3qFv8KiG4OqLu9eWPh7sKRqRizH5Vfv5Larmgrb
 
 API_BASE = "https://api.bilkatogo.dk"
 
-# Iposen svarer med eid=-1 ved succes; positive vaerdier er fejlkoder.
+# Iposen svarer med eid=-1 ved succes og eid=200 ved "authenticated".
+# Positive vaerdier er ikke automatisk fejl: 310 (RESET_DELIVERYTIME) og
+# 312 (MINIMUM_BUY) leveres sammen med gyldige data og er kun oplysninger.
+# Kun koderne herunder betyder at kaldet reelt mislykkedes.
 EID_OK = -1
+EID_AUTHENTICATED = 200
+EID_HARD_ERRORS = {
+    400,   # BAD_REQUEST
+    401,   # UNAUTHORIZED
+    402,   # PAYMENT_REQUIRED
+    403,   # FORBIDDEN
+    406,   # NOT_ACCEPTABLE
+    407,   # AUTHENTICATION_REQUIRED
+    409,   # CONFLICT
+    428,   # BLOCKED_PRODUCTS
+    500,   # INTERNAL_SERVER_ERROR
+    501,   # NOT_IMPLEMENTED
+    503,   # SERVICE_UNAVAILABLE
+    6001,  # QUANTITY_LIMIT
+}
 
 DEFAULT_TIMEOUT = 30
 SESSION_TTL = 3600  # sekunder vi genbruger en session for re-login
@@ -277,11 +295,14 @@ class BilkaClient:
         # 1) Gigya login
         r = self.session.post(
             f"{GIGYA_BASE_URL}/accounts.login",
+            # Ingen targetEnv med vilje. Med targetEnv=jssdk giver Gigya et
+            # login_token beregnet til browseren, og getJWT afviser det med
+            # 403005. Uden targetEnv kommer der et cookieValue, som getJWT
+            # accepterer.
             data={
                 "apiKey": GIGYA_API_KEY,
                 "loginID": self.username,
                 "password": self.password,
-                "targetEnv": "jssdk",
                 "includeUserInfo": "true",
             },
             timeout=self.timeout,
@@ -292,9 +313,17 @@ class BilkaClient:
                 f"Gigya-login fejlede: {body.get('errorMessage')} "
                 f"({body.get('errorDetails') or body.get('errorCode')})"
             )
-        login_token = (body.get("sessionInfo") or {}).get("cookieValue")
+        # Med targetEnv=jssdk hedder feltet login_token; i andre modes
+        # hedder det cookieValue. Tag det der er der.
+        session_info = body.get("sessionInfo") or {}
+        login_token = (
+            session_info.get("login_token") or session_info.get("cookieValue")
+        )
         if not login_token:
-            raise BilkaError("Gigya returnerede ingen sessionInfo.cookieValue")
+            raise BilkaError(
+                f"Gigya returnerede intet login_token (felter: "
+                f"{sorted(session_info)})"
+            )
 
         # 2) Veksl til JWT
         r = self.session.post(
@@ -323,7 +352,8 @@ class BilkaClient:
         if r.status_code != 200:
             raise BilkaError(f"LoginJWT fejlede: HTTP {r.status_code} {r.text[:200]}")
         data = r.json() if r.content else {}
-        if int(data.get("eid", EID_OK)) > 0:
+        # LoginJWT kvitterer med eid=200 / msg="authenticated" ved succes.
+        if int(data.get("eid", EID_OK)) in EID_HARD_ERRORS:
             raise BilkaError(f"LoginJWT afvist: {data.get('msg')}")
 
         self._logged_in = True
@@ -390,10 +420,13 @@ class BilkaClient:
             raise BilkaError(f"{endpoint}: uventet svar {r.text[:200]}") from None
 
         if isinstance(body, dict):
-            eid = body.get("eid")
-            if eid is not None and int(eid) > 0:
-                # ACCESS_DENIED efter et retry -> giv op med en klar besked
-                if int(eid) == 401 and require_login and _retry:
+            try:
+                eid = int(body.get("eid"))
+            except (TypeError, ValueError):
+                eid = None
+            if eid in EID_HARD_ERRORS:
+                # Sessionen kan vaere udloebet - log ind igen og proev en gang til.
+                if eid in (401, 403, 407) and require_login and _retry:
                     self._logged_in = False
                     self.login(force=True)
                     return self._request(
@@ -531,76 +564,106 @@ class BilkaClient:
             params["without_cache"] = 1
         return self._request("shop/v6", "Cart", params=params)
 
-    def basket_lines(self) -> list[dict]:
-        """Kurvens linjer normaliseret til noget der er til at arbejde med."""
-        basket = self.get_basket()
-        lines = basket.get("lines") or []
-        out = []
-        for line in lines:
-            pid = str(
-                line.get("productId") or line.get("product_id")
-                or line.get("id") or ""
-            )
-            qty = line.get("amount", line.get("quantity", line.get("count", 0)))
-            out.append({
-                "id": pid,
-                "name": line.get("name") or line.get("productName") or "",
-                "quantity": qty,
-                "price_kr": ore_to_kr(line.get("price")),
-                "total_kr": ore_to_kr(line.get("total") or line.get("sum")),
-                "raw": line,
-            })
+    def basket_lines(self, include_services: bool = True) -> list[dict]:
+        """Kurvens linjer fladet ud.
+
+        Iposen leverer kurven i tre lag: kategorigrupper med en overskrift,
+        derunder poster, og i hver post en liste af ``orderlines``. Gebyrer
+        som pakkeservice og levering ligger i gruppen "Services" sammen med
+        varerne, sa de kan sorteres fra med include_services=False.
+        """
+        return self._parse_lines(self.get_basket(), include_services)
+
+    @staticmethod
+    def _parse_lines(basket: dict, include_services: bool = True) -> list[dict]:
+        out: list[dict] = []
+        for group in basket.get("lines") or []:
+            headline = group.get("headline") or ""
+            is_service = headline.strip().lower() == "services"
+            if is_service and not include_services:
+                continue
+            for entry in group.get("lines") or []:
+                for line in entry.get("orderlines") or []:
+                    product = line.get("product") or {}
+                    out.append({
+                        "id": str(product.get("objectID") or ""),
+                        "name": product.get("name") or "",
+                        "brand": product.get("brand") or "",
+                        "quantity": line.get("quantity") or 0,
+                        "unit_price_kr": ore_to_kr(line.get("unitprice")),
+                        "total_kr": ore_to_kr(line.get("amount")),
+                        "group": headline,
+                        "is_service": is_service,
+                        "unavailable": line.get("unavailable_reason") or None,
+                        "raw": line,
+                    })
         return out
 
     def basket_summary(self) -> dict:
         """Kurvens total og antal varer."""
-        basket = self.get_basket()
+        return self._parse_summary(self.get_basket())
+
+    @staticmethod
+    def _parse_summary(basket: dict) -> dict:
         stat = basket.get("stat") or {}
+        delivery = basket.get("deliveryDate") or {}
         return {
             "total_kr": ore_to_kr(stat.get("price")),
+            "products_kr": ore_to_kr(stat.get("prod_price")),
             "total_before_discount_kr": ore_to_kr(stat.get("price_no_promo")),
             "discount_kr": ore_to_kr(stat.get("promo")),
             "deposit_kr": ore_to_kr(stat.get("deposit")),
             "packing_kr": ore_to_kr(stat.get("packing")),
-            "quantity": basket.get("totalProductAmount"),
+            "delivery_kr": ore_to_kr(stat.get("delivery_price")),
+            "vat_kr": ore_to_kr(stat.get("price_vat")),
+            # amount taeller gebyrer med, prod_amount er kun varer.
+            "quantity": stat.get("prod_amount"),
+            "quantity_incl_services": stat.get("amount"),
             "has_soldout": bool(stat.get("oos")),
-            "delivery_date": basket.get("deliveryDate"),
-            "delivery_interval": basket.get("deliveryInterval"),
+            "has_replacements": bool(stat.get("has_replacements")),
+            "minimum_left_kr": ore_to_kr(stat.get("minimum_left")),
+            "vouchers": stat.get("vouchers") or [],
+            "delivery_date": delivery.get("deliveryDate"),
+            "delivery_message": delivery.get("delivery_message"),
+            "fees": [
+                {"text": s.get("text"), "kr": ore_to_kr(s.get("value"))}
+                for s in (stat.get("specifications") or [])
+            ],
         }
 
-    def change_line(self, product_id: str | int, delta: int) -> dict:
-        """Aendr antallet af en vare med delta (positiv = laeg til, negativ = fjern).
+    def change_line(self, product_id: str | int, count: int) -> dict:
+        """Saet antallet af en vare i kurven.
 
-        Det er sadan frontenden gor: count er en relativ aendring, ikke et
-        absolut antal.
+        ``count`` er et **absolut** antal, ikke en aendring: count=3 giver tre
+        styk uanset hvad der la i kurven i forvejen, og count=0 fjerner
+        linjen.
         """
         return self._request("shop/v6", "ChangeLineCount", params={
             "productId": product_id,
-            "count": delta,
+            "count": max(0, int(count)),
             "fullCart": 0,
         })
 
+    def set_quantity(self, product_id: str | int, quantity: int) -> dict:
+        """Saet et praecist antal af en vare."""
+        return self.change_line(product_id, quantity)
+
     def add(self, product_id: str | int, quantity: int = 1) -> dict:
-        """Laeg quantity styk af en vare i kurven."""
+        """Laeg quantity styk oveni det der allerede ligger i kurven."""
         if quantity <= 0:
             raise BilkaError("quantity skal vaere positiv - brug remove() i stedet")
-        return self.change_line(product_id, quantity)
+        return self.change_line(
+            product_id, self.quantity_in_basket(product_id) + quantity
+        )
 
     def remove(self, product_id: str | int, quantity: int | None = None) -> dict:
         """Fjern varen. Uden quantity fjernes hele linjen."""
         if quantity is None:
-            quantity = self.quantity_in_basket(product_id)
-            if quantity <= 0:
-                return {"eid": EID_OK, "msg": "Varen er ikke i kurven"}
-        return self.change_line(product_id, -abs(quantity))
-
-    def set_quantity(self, product_id: str | int, quantity: int) -> dict:
-        """Saet et absolut antal ved at regne forskellen ud fra kurven."""
+            return self.change_line(product_id, 0)
         current = self.quantity_in_basket(product_id)
-        delta = quantity - current
-        if delta == 0:
-            return {"eid": EID_OK, "msg": f"Antal er allerede {quantity}"}
-        return self.change_line(product_id, delta)
+        if current <= 0:
+            return {"eid": EID_OK, "msg": "Varen er ikke i kurven"}
+        return self.change_line(product_id, max(0, current - quantity))
 
     def quantity_in_basket(self, product_id: str | int) -> int:
         pid = str(product_id)
@@ -613,12 +676,19 @@ class BilkaClient:
         return 0
 
     def add_many(self, items: dict[str | int, int]) -> list[dict]:
-        """Laeg flere varer i kurven. items er {produkt_id: antal}."""
+        """Laeg flere varer i kurven. items er {produkt_id: antal}.
+
+        Kurven laeses en gang op front i stedet for en gang pr. vare.
+        """
+        current = {line["id"]: line["quantity"]
+                   for line in self.basket_lines()}
         results = []
         for pid, qty in items.items():
+            target = int(current.get(str(pid), 0) or 0) + qty
             try:
-                self.add(pid, qty)
-                results.append({"id": str(pid), "quantity": qty, "ok": True})
+                self.change_line(pid, target)
+                results.append({"id": str(pid), "quantity": qty,
+                                "total": target, "ok": True})
             except BilkaError as exc:
                 results.append({"id": str(pid), "quantity": qty,
                                 "ok": False, "error": str(exc)})
@@ -785,26 +855,40 @@ def cmd_details(args) -> int:
 
 def cmd_basket(args) -> int:
     c = _client(args)
-    lines = c.basket_lines()
-    summary = c.basket_summary()
+    basket = c.get_basket()          # ét kald, to visninger
+    lines = c._parse_lines(basket)
+    summary = c._parse_summary(basket)
     if args.json:
-        print(json.dumps({"lines": lines, "summary": summary},
-                         ensure_ascii=False, indent=2))
+        print(json.dumps(
+            {"lines": [{k: v for k, v in line.items() if k != "raw"}
+                       for line in lines],
+             "summary": summary},
+            ensure_ascii=False, indent=2))
         return 0
     if not lines:
         print("Kurven er tom.")
         return 0
+
+    def money(value: Any) -> str:
+        return f"{value:.2f}".replace(".", ",") if value is not None else "-"
+
     for line in lines:
-        total = line["total_kr"]
-        total_s = f"{total:.2f}".replace(".", ",") if total else "-"
-        print(f"{line['quantity']:>3} x {line['name'][:52]:<52} {total_s:>9} kr")
-    print("-" * 72)
-    total = summary.get("total_kr")
-    print(f"{'I alt':<58} "
-          f"{(f'{total:.2f}'.replace('.', ',') if total else '-'):>9} kr")
-    if summary.get("delivery_date"):
-        print(f"Levering: {summary['delivery_date']} "
-              f"{summary.get('delivery_interval') or ''}")
+        if line["is_service"]:
+            continue
+        name = f"{line['name']}"[:50]
+        flag = "  [UDSOLGT]" if line["unavailable"] else ""
+        print(f"{line['quantity']:>3} x {name:<50} "
+              f"{money(line['total_kr']):>9} kr{flag}")
+    for fee in summary.get("fees") or []:
+        if fee.get("kr"):
+            print(f"      {fee['text']:<50} {money(fee['kr']):>9} kr")
+    print("-" * 70)
+    if summary.get("discount_kr"):
+        print(f"{'Rabat':<56} {money(summary['discount_kr']):>9} kr")
+    print(f"{'I alt (' + str(summary.get('quantity') or 0) + ' varer)':<56} "
+          f"{money(summary.get('total_kr')):>9} kr")
+    if summary.get("delivery_message"):
+        print(f"Levering: {summary['delivery_message']}")
     if summary.get("has_soldout"):
         print("OBS: kurven indeholder udsolgte varer.")
     return 0

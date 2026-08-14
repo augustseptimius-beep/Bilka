@@ -57,7 +57,7 @@ Tre trin. Frontenden gør præcis det samme.
 ```
 1) POST https://accounts.eu1.gigya.com/accounts.login
    apiKey=3_tA6BbV434FQqN73HnUG1KA3qFv8KiG4OqLu9eWPh7sKRqRizH5Vfv5Larmgrb4I2
-   loginID=<email>  password=<kodeord>  targetEnv=jssdk
+   loginID=<email>  password=<kodeord>
    -> sessionInfo.cookieValue  (login_token)
 
 2) POST https://accounts.eu1.gigya.com/accounts.getJWT
@@ -73,6 +73,16 @@ Derefter sendes både sessionscookien og headeren `jwt_token` med på alle
 kald. Sessionen udløber, og svaret bliver da `ACCESS_DENIED` / `eid: 401` —
 så skal trin 1-3 køres igen.
 
+**Send ikke `targetEnv` i trin 1.** Frontenden kører i browseren og bruger
+`targetEnv=jssdk`, men så returnerer Gigya et `sessionInfo.login_token`
+beregnet til JS-SDK'ets egen cookie-session, og `getJWT` afviser det med
+`403005 Unauthorized user`. Uden `targetEnv` kommer der i stedet et
+`sessionInfo.cookieValue`, og *det* accepterer `getJWT`. `targetEnv=mobile`
+giver `sessionToken`/`sessionSecret`, som også afvises (403005 via
+`login_token`, 403007 via `oauth_token`).
+
+Trin 3 kvitterer med `{"msg": "authenticated", "eid": 200, "uid": ...}`.
+
 ## 3. Iposen (kurv, ordrer, levering)
 
 Base: `https://api.bilkatogo.dk/api/`. Alle kald tager `?u=w`.
@@ -85,16 +95,23 @@ i alle versioner, så brug den version frontenden bruger.
 {"eid": -1, "uid": 12345, "msg": null, ...}
 ```
 
-`eid = -1` betyder OK. Positive værdier er fejl:
+`eid = -1` betyder OK, og `eid = 200` betyder "authenticated". **Positive
+værdier er ikke automatisk fejl.** Et almindeligt `Cart`-kald svarer rutinemæssigt
+`eid: 310` og leverer alligevel hele kurven. Behandler man alt over 0 som en
+fejl, virker ingenting.
 
-| eid | Betydning |
-|---|---|
-| 310 | Leveringstid nulstillet |
-| 312 | Under minimumskøb |
-| 401 | Ikke logget ind |
-| 428 | Blokerede varer i kurven |
-| 6001 | Over maks. antal |
-| -4 | Tilbudsgrænse nået |
+| eid | Betydning | Reel fejl? |
+|---|---|---|
+| -1 | OK | nej |
+| 200 | Authenticated | nej |
+| 310 | Leveringstid nulstillet | nej — data følger med |
+| 312 | Under minimumskøb | nej — oplysning |
+| 315 | Rabatkode utilgængelig | afhænger af kaldet |
+| -4 | Tilbudsgrænse nået | oplysning |
+| 400, 401, 403, 407 | Afvist / ikke logget ind | ja |
+| 428 | Blokerede varer i kurven | ja |
+| 500, 501, 503 | Serverfejl | ja |
+| 6001 | Over maks. antal | ja |
 
 ### Kurv
 
@@ -107,9 +124,55 @@ i alle versioner, så brug den version frontenden bruger.
 | `BasketGUID2Cart` | v3 | GET | `basketguid` |
 | `voucher` | v6 | POST/DELETE | `voucher_code`, `fullCart` |
 
-**`count` er en relativ ændring, ikke et absolut antal.** `count=2` lægger
-to mere i kurven; `count=-1` fjerner én. Skal du sætte et bestemt antal, må
-du selv læse kurven først og regne forskellen ud (det gør `set_quantity`).
+**`count` er et absolut antal, ikke en ændring.** `count=3` giver tre styk
+uanset hvad der lå i kurven i forvejen, og `count=0` fjerner linjen. Vil du
+lægge noget *oveni* det eksisterende, skal du selv læse kurven først og
+sende summen.
+
+Målt direkte mod API'et med samme vare:
+
+| Sendt | Kurven havde | Kurven fik |
+|---|---|---|
+| `count=4` | 0 | 4 |
+| `count=2` | 4 | 2 |
+| `count=7` | 2 | 7 |
+| `count=0` | 7 | 0 |
+
+Frontendens kode inviterer til at læse det forkert: dens store-action
+beregner en `quantityAdded` som `ønsket - nuværende`, men den værdi bruges
+kun til analytics. Det der faktisk sendes videre til `ChangeLineCount` er
+det absolutte antal.
+
+### Kurvens struktur
+
+`Cart` returnerer ikke en flad liste. Varerne ligger tre niveauer nede:
+
+```
+lines[]                     kategorigruppe: {headline, type, lines[]}
+  └── lines[]               {discounts, orderlines[]}
+        └── orderlines[]    {quantity, unitprice, amount, product{...}}
+```
+
+Produkt-id'et er `orderlines[].product.objectID` — det samme id som Algolia
+bruger. Gebyrer (pakkeservice, leveringsgebyr) ligger som almindelige linjer
+i gruppen med `headline: "Services"`, så de skal sorteres fra, hvis man kun
+vil se dagligvarer.
+
+Totalerne står i `stat`, ikke i linjerne:
+
+| Felt | Betydning |
+|---|---|
+| `price` | Alt i alt, inkl. gebyrer |
+| `prod_price` | Kun varer |
+| `price_no_promo` | Før rabat |
+| `promo` | Rabat |
+| `amount` / `prod_amount` | Antal stk. med / uden gebyrer |
+| `packing`, `delivery_price` | Pakkeservice og levering |
+| `oos` | Udsolgte varer i kurven |
+| `specifications[]` | Gebyrerne som `{text, value}` |
+
+Leveringstiden ligger i `deliveryDate` som et objekt med `deliveryDate`,
+`intervalStart`/`intervalEnd` og en færdig `delivery_message`.
 
 ### Ordrer
 
@@ -170,9 +233,12 @@ Iposen. `CheckOut` med `paymentMethod: 8` bruger det gemte kort på kontoen.
 ## Faldgruber
 
 - Ukendte ruter svarer `NOOOO` med HTTP 200. Alt under `/api/shop/` svarer
-  `ACCESS_DENIED` før routing, så man kan ikke gætte endpoints ved at probe.
+  `ACCESS_DENIED` før routing, så man kan ikke gætte endpoints ved at probe —
+  et gyldigt og et opdigtet endpoint ser ens ud, indtil man er logget ind.
 - Priser er i øre overalt.
-- `count` på `ChangeLineCount` er relativ (se ovenfor).
+- `count` på `ChangeLineCount` er absolut (se ovenfor).
+- `eid > 0` er ikke ensbetydende med fejl (se tabellen ovenfor).
+- Drop `targetEnv` i Gigya-login, ellers afviser `getJWT`.
 - Frontenden sender basketændringer gennem en kø med retry, fordi endpointet
   af og til timer ud. Klienten her sætter derfor en eksplicit timeout.
 - `withCredentials` er påkrævet — cookien bærer sessionen, JWT'en alene er
