@@ -80,6 +80,15 @@ der tilfældigvis matcher ordet".
 `--sort unit_price` sammenligner kun varer med **samme** enhed (den enhed
 flest træffere bruger), for 0,64 kr/meter er ikke billigere end 9,95 kr/kg.
 
+## Claude Desktop
+
+Vil du bare chatte med Claude om indkøb, er
+[`docs/claude-desktop.md`](docs/claude-desktop.md) den fulde opskrift: MCP-server
+plus `skills/bilka-indkoeb`, som håndhæver kostkrav og sørger for, at der ikke
+bliver bestilt uden dit ja.
+
+Kort fortalt: MCP giver Claude hænderne, skillen giver dømmekraften.
+
 ## MCP-server
 
 Så en assistent kan handle for dig:

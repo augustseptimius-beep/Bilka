@@ -9,3 +9,6 @@ uv.lock
 .env
 session.json
 .DS_Store
+
+# skill-zip bygges lokalt
+skills/*.zip
