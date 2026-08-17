@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "bilka": {
-      "command": "uv",
-      "args": ["run", "--extra", "mcp", "server.py"],
+      "command": "/sti/til/Bilka/.venv/bin/python",
+      "args": ["server.py"],
       "cwd": "/sti/til/Bilka",
       "env": {
         "BILKA_USERNAME": "din@email.dk",

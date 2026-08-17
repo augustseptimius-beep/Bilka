@@ -14,19 +14,54 @@ Sæt MCP op først. Skillen er ikke til megen nytte uden den.
 
 ### Hent koden og installér
 
+**Tjek din Python-version først.** MCP-serveren bruger `fastmcp`, som kræver
+Python 3.10 eller nyere:
+
 ```bash
+python3 --version
+```
+
+macOS leverer stadig Python 3.9 med Xcode Command Line Tools. Får du `3.9.x`,
+fejler installationen med `Could not find a version that satisfies the
+requirement fastmcp` — pakken findes simpelthen ikke til 3.9.
+
+### Med uv (nemmest — henter selv en passende Python)
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source "$HOME/.local/bin/env"          # eller åbn en ny terminal
+
 git clone https://github.com/augustseptimius-beep/Bilka.git
 cd Bilka
 uv sync --extra mcp
+.venv/bin/python -c "import fastmcp, requests; print('afhængigheder OK')"
 ```
 
-Har du ikke `uv`, virker `pip install requests fastmcp` også — så skal
-kommandoen i config'en bare være `python3` i stedet (se nedenfor).
+`uv` kræver hverken Homebrew eller administratoradgang og henter selv den
+Python der skal bruges. Den laver en `.venv` i projektmappen, som config'en
+peger direkte ind i.
+
+### Uden uv
+
+Har du allerede Python 3.10+ (fx via Homebrew: `brew install python@3.12`):
+
+```bash
+git clone https://github.com/augustseptimius-beep/Bilka.git
+cd Bilka
+python3.12 -m venv .venv                # brug din 3.10+ binær
+.venv/bin/pip install --quiet --upgrade pip requests fastmcp
+.venv/bin/python -c "import fastmcp, requests; print('afhængigheder OK')"
+```
+
+Uanset vejen: brug en venv frem for en global installation. Den giver en fast,
+absolut sti til Python — netop hvad Claude Desktop skal bruge, fordi den ikke
+arver din `PATH`. Nyere systemer afviser desuden ofte `pip install` uden for
+en venv (`externally-managed-environment`).
 
 Notér den fulde sti til mappen, den skal bruges lige om lidt:
 
 ```bash
-pwd     # fx /Users/august/kode/Bilka
+pwd     # fx /Users/august/Bilka
 ```
 
 ### Redigér config-filen
@@ -42,8 +77,8 @@ Findes filen ikke, så opret den. Indhold:
 {
   "mcpServers": {
     "bilka": {
-      "command": "uv",
-      "args": ["run", "--extra", "mcp", "server.py"],
+      "command": "/HELE/STIEN/TIL/Bilka/.venv/bin/python",
+      "args": ["server.py"],
       "cwd": "/HELE/STIEN/TIL/Bilka",
       "env": {
         "BILKA_USERNAME": "din@email.dk",
@@ -54,20 +89,17 @@ Findes filen ikke, så opret den. Indhold:
 }
 ```
 
-Bruger du pip i stedet for uv:
-
-```json
-      "command": "python3",
-      "args": ["server.py"],
-```
+På Windows hedder Python i venv'en `.venv\Scripts\python.exe`, og stier
+skal skrives med dobbelte backslashes: `C:\\Users\\dig\\Bilka`.
 
 Tre ting der typisk går galt:
 
-- **`cwd` skal være den fulde sti.** Ingen `~` og ingen relativ sti.
-- **`command` skal kunne findes.** Claude Desktop arver ikke altid din
-  `PATH`. Virker det ikke, så skriv den fulde sti — `which uv` (macOS) eller
-  `where uv` (Windows) giver den.
+- **Brug fulde stier i både `command` og `cwd`.** Ingen `~`, ingen relative
+  stier. Claude Desktop arver ikke din `PATH`, så en bar `python3` eller
+  `uv` fejler tit med `spawn ENOENT`, selvom den virker i terminalen. Peger
+  du direkte på venv'ens Python, findes den altid.
 - **JSON tåler ikke kommentarer** og heller ikke et komma efter sidste felt.
+- **Genstart programmet helt**, ikke bare vinduet.
 
 Genstart Claude Desktop helt (luk vinduet er ikke nok — afslut programmet).
 Værktøjerne dukker op under værktøjsikonet i chatten.
@@ -128,8 +160,9 @@ udtrykkeligt, og du bliver bedt om at bekræfte totalen først.
 
 | Symptom | Årsag |
 |---|---|
+| `No matching distribution found for fastmcp` | Python 3.9 — fastmcp kræver 3.10+ |
 | Ingen bilka-værktøjer i chatten | Config'en er ikke læst — tjek JSON-syntaks og genstart helt |
-| `spawn uv ENOENT` | `command` kan ikke findes; skriv fuld sti |
+| `spawn ... ENOENT` | `command` kan ikke findes; skriv fuld sti til `.venv`-Python |
 | `Gigya-login fejlede: Invalid LoginID` | Forkert mail eller kodeord i `env` |
 | Søgning virker, men kurven fejler | Login er problemet, ikke serveren |
 | Skillen aktiveres ikke | Code execution og File creation slået fra |

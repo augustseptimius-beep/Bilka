@@ -25,8 +25,14 @@ $ bilka shop "letmælk:2" "rugbrød" "kaffe"
 ```bash
 git clone https://github.com/augustseptimius-beep/Bilka.git
 cd Bilka
-uv sync            # eller: pip install requests
+uv sync --extra mcp
 ```
+
+Kræver Python 3.10+ (`fastmcp` findes ikke til 3.9, som macOS stadig leverer).
+Har du ikke `uv`, henter `curl -LsSf https://astral.sh/uv/install.sh | sh` den
+uden Homebrew eller administratoradgang — og den henter selv en passende
+Python. Skal du kun bruge CLI'en og ikke MCP-serveren, er `pip install
+requests` nok.
 
 Login sættes i miljøet:
 
@@ -97,14 +103,16 @@ Så en assistent kan handle for dig:
 uv run --extra mcp server.py
 ```
 
-I `~/.claude.json` eller projektets `.mcp.json`:
+I `~/.claude.json` eller projektets `.mcp.json`. Peg på venv'ens Python med
+fuld sti — MCP-klienter arver ikke altid din `PATH`, så en bar `uv` eller
+`python3` fejler tit med `spawn ENOENT`:
 
 ```json
 {
   "mcpServers": {
     "bilka": {
-      "command": "uv",
-      "args": ["run", "--extra", "mcp", "server.py"],
+      "command": "/sti/til/Bilka/.venv/bin/python",
+      "args": ["server.py"],
       "cwd": "/sti/til/Bilka",
       "env": {
         "BILKA_USERNAME": "din@email.dk",
