@@ -1,6 +1,6 @@
 ---
 name: bilka-indkoeb
-description: Handel ind hos Bilka To Go via bilka-MCP-serveren. Brug den når brugeren vil købe dagligvarer, sætte varer i kurven, planlægge mad og handle ind til det, spørger hvad noget koster hos Bilka, vil bestille "det samme som sidst", eller beder om at få tjekket eller ryddet op i kurven. Håndhæver glutenfri og laktosefri som hårde krav og bekræfter altid før bestilling.
+description: Handel ind hos Bilka To Go via bilka-MCP-serveren. Brug den når brugeren vil købe dagligvarer, sætte varer i kurven, planlægge mad og handle ind til det, spørger hvad noget koster hos Bilka, vil bestille "det samme som sidst", eller beder om at få tjekket eller ryddet op i kurven. Skeln mellem hårde kostkrav og præferencer, og bekræft altid før bestilling.
 ---
 
 # Indkøb hos Bilka To Go
@@ -8,28 +8,35 @@ description: Handel ind hos Bilka To Go via bilka-MCP-serveren. Brug den når br
 Værktøjerne kommer fra `bilka`-MCP-serveren (`search_products`, `add_to_basket`,
 `get_basket`, `add_shopping_list`, `reorder`, `checkout` m.fl.).
 
+> **Tilpas dette afsnit til din egen husstand.** Kostkrav og faste varer
+> herunder er eksempler, der viser mønstret — ikke noget der passer til
+> alle. Erstat dem med dine egne, før du bruger skillen i praksis.
+
 ## Kostkrav — det vigtigste
 
-To af dem er helbredskrav, ikke smagssager. Bliver de brudt, er varen ubrugelig:
+Skeln mellem helbredskrav og smagssager. Bliver et helbredskrav brudt, er
+varen ubrugelig, ikke bare ikke-optimal — så eksemplet herunder viser hvor
+strengt den slags skal håndhæves:
 
-- **Glutenfri.** Alt med hvede, rug, byg, spelt, havre uden glutenfri-mærkning.
-- **Laktosefri** for mejeriprodukter: mælk, yoghurt, fløde, blød ost, smøreost.
+- *Eksempel:* **Glutenfri.** Alt med hvede, rug, byg, spelt, havre uden
+  glutenfri-mærkning.
+- *Eksempel:* **Laktosefri** for mejeriprodukter: mælk, yoghurt, fløde, blød
+  ost, smøreost. Lagret hård ost er i praksis laktosefri og går an, men vælg
+  det mærkede produkt hvis begge dele findes.
 
-Lagret hård ost er i praksis laktosefri og går an, men vælg det mærkede
-produkt hvis begge dele findes.
+**Verificér, gæt ikke — uanset hvilke krav du sætter op.** Bilkas søgning
+matcher løst — en søgning på "smør" kan give havregryn. Læs `name` og
+`description` på det produkt du vælger, og tjek at kravet faktisk er opfyldt.
+Kan du ikke bekræfte det, så læg varen til side og spørg i stedet for at
+gætte.
 
-**Verificér, gæt ikke.** Bilkas søgning matcher løst — en søgning på "smør"
-kan give havregryn. Læs `name` og `description` på det produkt du vælger, og
-tjek at der faktisk står glutenfri/laktosefri hvor det er påkrævet. Kan du
-ikke bekræfte det, så læg varen til side og spørg i stedet for at gætte.
-
-Præferencer, som må vige for pris og tilgængelighed:
+Præferencer, som må vige for pris og tilgængelighed (også eksempler):
 
 - **Økologisk** foretrækkes klart — søg `"<vare> øko"` først.
 - **Plantetungt**, men ikke veganer: tofu og plantepostej ja, men også ost,
   yoghurt og feta.
-- Der er **et lille barn i huset** (ble str. 4, 7-18 kg). Bleer, vådservietter
-  og bleposer er faste varer.
+- Faste varer, der altid skal genkøbes uden at blive spurgt om — fx
+  husholdningsartikler eller noget et husstandsmedlem bruger fast.
 
 ## Fremgangsmåde
 
