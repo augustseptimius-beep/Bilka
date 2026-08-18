@@ -1,0 +1,35 @@
+{
+  "manifest_version": "0.3",
+  "name": "bilka-to-go",
+  "version": "1.0.0",
+  "description": "Søg, læg i kurv og se totalen hos Bilka To Go",
+  "author": { "name": "August Septimius Krogh" },
+  "server": {
+    "type": "python",
+    "entry_point": "server.py",
+    "mcp_config": {
+      "command": "{{PYTHON}}",
+      "args": ["${__dirname}/server.py"],
+      "env": {
+        "BILKA_USERNAME": "${user_config.bilka_username}",
+        "BILKA_PASSWORD": "${user_config.bilka_password}",
+        "BILKA_ALLOW_CHECKOUT": "0"
+      }
+    }
+  },
+  "user_config": {
+    "bilka_username": {
+      "type": "string",
+      "title": "Bilka-mail",
+      "description": "Din email til bilkatogo.dk",
+      "required": true
+    },
+    "bilka_password": {
+      "type": "string",
+      "title": "Bilka-kodeord",
+      "description": "Samme kodeord som på bilkatogo.dk. Gemmes sikkert af Claude, ikke i en fil vi kan læse.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

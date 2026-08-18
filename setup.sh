@@ -108,36 +108,56 @@ if [ -f "$OLD_CFG" ] && grep -q '"mcpServers"' "$OLD_CFG" 2>/dev/null; then
     ok "fandt også mcpServers i $OLD_CFG - den er ikke rørt, ryd evt. op i den manuelt"
 fi
 
-# --- 5. Skill --------------------------------------------------------------
-say "5/5  Indkøbs-skill"
+# --- 5. Skill ---------------------------------------------------------
+say "5/6  Indkøbs-skill"
 if [ -d .claude/skills/bilka-indkoeb ]; then
     ok ".claude/skills/bilka-indkoeb findes - Claude Code indlæser den automatisk i denne mappe"
 else
     warn ".claude/skills/bilka-indkoeb mangler - den er valgfri, men bør ligge i repoet"
 fi
-if command -v zip >/dev/null 2>&1 && [ -d .claude/skills/bilka-indkoeb ]; then
-    rm -f skills/bilka-indkoeb.zip
-    (cd .claude/skills && zip -qr "$REPO/skills/bilka-indkoeb.zip" bilka-indkoeb)
-    ok "skills/bilka-indkoeb.zip pakket (til upload, hvis din app-udgave understøtter det)"
+
+# --- 6. .mcpb - installerbar extension til den almindelige Claude-chat -----
+say "6/6  Extension til Claude-chatten (.mcpb)"
+if [ -f mcpb/manifest.template.json ] && command -v zip >/dev/null 2>&1; then
+    BUILD="$(mktemp -d)"
+    PY_PATH="$PY" "$PY" - "$BUILD" <<'PYEOF'
+import json, sys, pathlib
+build = pathlib.Path(sys.argv[1])
+tpl = pathlib.Path("mcpb/manifest.template.json").read_text()
+tpl = tpl.replace("{{PYTHON}}", __import__("os").environ["PY_PATH"])
+json.loads(tpl)  # fejl tidligt hvis substitutionen ødelagde JSON'en
+(build / "manifest.json").write_text(tpl)
+PYEOF
+    cp server.py bilka_cli.py "$BUILD/"
+    rm -f bilka-to-go.mcpb
+    (cd "$BUILD" && zip -qr "$REPO/bilka-to-go.mcpb" manifest.json server.py bilka_cli.py)
+    rm -rf "$BUILD"
+    ok "bilka-to-go.mcpb pakket - peger på $PY"
+else
+    warn "kunne ikke pakke .mcpb (mangler zip eller mcpb/manifest.template.json) - spring over"
 fi
 
 cat <<EOF
 
 ────────────────────────────────────────────────────────────
-Færdig. Sådan bruger du det:
+Færdig. To måder at bruge det på:
 
-  1. Åbn en Claude Code-session i denne mappe ($REPO)
-     (i terminalen: "claude", eller vælg mappen i Claude-appens Claude Code-fane)
+  A) Claude Code (virker altid, ingen ekstra trin):
+     Åbn en Claude Code-session i denne mappe ($REPO) - i terminalen: "claude".
+     Den finder selv .mcp.json og .claude/skills/bilka-indkoeb, og beder om
+     lov til MCP-serveren første gang.
 
-  2. Claude Code finder selv .mcp.json og .claude/skills/bilka-indkoeb -
-     du bliver typisk bedt om at godkende projektets MCP-server første gang.
+  B) Almindelig Claude-chat, hvis din app har Settings → Extensions:
+     Dobbeltklik $REPO/bilka-to-go.mcpb (eller Settings → Extensions →
+     Advanced settings → Install Extension…). Du bliver bedt om din
+     Bilka-mail og kodeord i selve installationsdialogen - vi skriver dem
+     ikke til en fil. Skillen skal uploades separat samme sted som en zip:
+     skal du bruge den, kør: (cd .claude/skills && zip -r ../../skills.zip bilka-indkoeb)
 
-  3. Prøv:  "Hvad ligger der i min Bilka-kurv?"
+Prøv så:  "Hvad ligger der i min Bilka-kurv?"
 
-Brugte du i stedet den almindelige chat i Claude-appen, og den ikke finder
-værktøjerne: den udgave af appen understøtter formentlig kun MCP-servere
-den selv hoster (remote), ikke lokale som denne. Claude Code er den
-pålidelige vej indtil videre.
+Settings → Connectors kræver en HTTPS-URL og er kun til fjernservere -
+det er ikke en vej til denne lokale server.
 
 Bestilling er slået fra. Claude kan alt undtagen bruge dit betalingskort.
 ────────────────────────────────────────────────────────────

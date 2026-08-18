@@ -158,10 +158,33 @@ Claude Code finder selv `.claude/skills/bilka-indkoeb/SKILL.md`, når du
 åbner projektmappen — intet at installere. Den aktiverer sig selv, når
 samtalen handler om indkøb, eller du kan bede om den ved navn.
 
-(Der ligger også en `skills/bilka-indkoeb.zip`, som `setup.sh` pakker, til
-hvis din udgave af Claude-appens almindelige chat en dag understøtter
-lokale MCP-servere og skill-upload samtidig — men det er ikke den
-understøttede vej lige nu.)
+---
+
+## 4. Eller: .mcpb-extension til den almindelige chat
+
+Har din app **Settings → Extensions** (tjek der, ikke Connectors — Connectors
+kræver en HTTPS-URL og er kun til fjernservere), findes der en anden vej:
+`setup.sh` bygger også `bilka-to-go.mcpb`, en installerbar pakke til præcis
+den overflade.
+
+Dobbeltklik filen, eller **Settings → Extensions → Advanced settings →
+Install Extension…**. Installationsdialogen beder om din Bilka-mail og
+kodeord og gemmer dem selv sikkert — vi skriver dem ikke til en fil, i
+modsætning til `.mcp.json`.
+
+Bundlen peger på den samme `.venv`-Python som Claude Code bruger (angivet i
+`manifest.json`'s `command`-felt), så den undgår macOS' for gamle
+system-Python. Det gør den til gengæld knyttet til denne ene maskine og
+denne ene sti — kør `./setup.sh` igen, hvis du flytter eller kloner mappen
+et andet sted, så pakkes den til den nye sti.
+
+Skillen er ikke inde i `.mcpb`-filen (kun MCP-serveren er). Vil du have den
+med i den almindelige chat, skal den uploades separat som en zip, hvis din
+app har et tilsvarende Skills-panel under Capabilities:
+
+```bash
+cd .claude/skills && zip -r ../../skills.zip bilka-indkoeb
+```
 
 ---
 

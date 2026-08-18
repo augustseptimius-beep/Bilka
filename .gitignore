@@ -15,3 +15,4 @@ skills/*.zip
 
 # rigtig config med credentials - kun .example skal committes
 .mcp.json
+bilka-to-go.mcpb
