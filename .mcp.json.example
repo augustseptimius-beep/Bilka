@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "bilka": {
+      "command": "/sti/til/Bilka/.venv/bin/python",
+      "args": ["server.py"],
+      "cwd": "/sti/til/Bilka",
+      "env": {
+        "BILKA_USERNAME": "din@email.dk",
+        "BILKA_PASSWORD": "dit-kodeord",
+        "BILKA_ALLOW_CHECKOUT": "0"
+      }
+    }
+  }
+}

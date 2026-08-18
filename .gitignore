@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+uv.lock
+.env
+session.json
+.DS_Store
+
+# skill-zip bygges lokalt
+skills/*.zip
