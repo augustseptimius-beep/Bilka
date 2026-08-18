@@ -57,33 +57,27 @@ BILKA_USERNAME="$BILKA_USER" BILKA_PASSWORD="$BILKA_PASS" \
     || die "login blev afvist. Tjek e-mail og kodeord og kør scriptet igen."
 ok "logget ind som $BILKA_USER"
 
-# --- 4. Config -------------------------------------------------------------
-say "4/5  Claude Desktop"
+# --- 4. Projekt-MCP-config til Claude Code -----------------------------
+say "4/5  MCP-config"
 
-case "$(uname -s)" in
-    Darwin) CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
-    *)      CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
-esac
-mkdir -p "$(dirname "$CFG")"
-
-if [ -f "$CFG" ]; then
-    cp "$CFG" "$CFG.backup-$(date +%Y%m%d-%H%M%S)"
-    ok "sikkerhedskopi af eksisterende config gemt"
+MCP_JSON="$REPO/.mcp.json"
+if [ -f "$MCP_JSON" ]; then
+    cp "$MCP_JSON" "$MCP_JSON.backup-$(date +%Y%m%d-%H%M%S)"
+    ok "sikkerhedskopi af eksisterende .mcp.json gemt"
 fi
 
 BILKA_USERNAME="$BILKA_USER" BILKA_PASSWORD="$BILKA_PASS" \
-CFG_PATH="$CFG" PY_PATH="$PY" REPO_PATH="$REPO" "$PY" - <<'PYEOF'
+MCP_PATH="$MCP_JSON" PY_PATH="$PY" REPO_PATH="$REPO" "$PY" - <<'PYEOF'
 import json, os, pathlib
 
-cfg = pathlib.Path(os.environ["CFG_PATH"])
+cfg = pathlib.Path(os.environ["MCP_PATH"])
 data = {}
 if cfg.exists() and cfg.stat().st_size:
     try:
         data = json.loads(cfg.read_text())
     except json.JSONDecodeError:
-        raise SystemExit("config-filen indeholder ugyldig JSON - ret eller slet den først")
+        raise SystemExit(".mcp.json indeholder ugyldig JSON - ret eller slet den først")
 
-# Behold andre MCP-servere som de er.
 servers = data.setdefault("mcpServers", {})
 servers["bilka"] = {
     "command": os.environ["PY_PATH"],
@@ -96,34 +90,54 @@ servers["bilka"] = {
 }
 cfg.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 cfg.chmod(0o600)
-
-others = [k for k in servers if k != "bilka"]
-print(f"  ok  config skrevet ({len(servers)} server{'e' if len(servers) != 1 else ''}"
-      + (f", urørt: {', '.join(others)}" if others else "") + ")")
+print("  ok  .mcp.json skrevet i projektmappen")
 PYEOF
+
+warn ".mcp.json indeholder dit kodeord i klartekst og er ikke committet (se .gitignore)"
+
+# Nyere udgaver af Claude-appen (den samlede app med Cowork og Claude Code)
+# bruger IKKE claude_desktop_config.json til den almindelige chat - det er
+# grunden til at MCP-værktøjer kan mangle der, selvom skillen indlæses fint.
+# .mcp.json er den mekanisme Claude Code selv bruger til projekt-scopede
+# MCP-servere, og virker derfor uafhængigt af hvilken variant af appen du har.
+case "$(uname -s)" in
+    Darwin) OLD_CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+    *)      OLD_CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
+esac
+if [ -f "$OLD_CFG" ] && grep -q '"mcpServers"' "$OLD_CFG" 2>/dev/null; then
+    ok "fandt også mcpServers i $OLD_CFG - den er ikke rørt, ryd evt. op i den manuelt"
+fi
 
 # --- 5. Skill --------------------------------------------------------------
 say "5/5  Indkøbs-skill"
-if command -v zip >/dev/null 2>&1 && [ -d skills/bilka-indkoeb ]; then
-    (cd skills && rm -f bilka-indkoeb.zip && zip -qr bilka-indkoeb.zip bilka-indkoeb)
-    ok "skills/bilka-indkoeb.zip er klar til upload"
+if [ -d .claude/skills/bilka-indkoeb ]; then
+    ok ".claude/skills/bilka-indkoeb findes - Claude Code indlæser den automatisk i denne mappe"
 else
-    warn "kunne ikke pakke skillen - den er valgfri"
+    warn ".claude/skills/bilka-indkoeb mangler - den er valgfri, men bør ligge i repoet"
+fi
+if command -v zip >/dev/null 2>&1 && [ -d .claude/skills/bilka-indkoeb ]; then
+    rm -f skills/bilka-indkoeb.zip
+    (cd .claude/skills && zip -qr "$REPO/skills/bilka-indkoeb.zip" bilka-indkoeb)
+    ok "skills/bilka-indkoeb.zip pakket (til upload, hvis din app-udgave understøtter det)"
 fi
 
 cat <<EOF
 
 ────────────────────────────────────────────────────────────
-Færdig. To ting mangler, som kun du kan gøre:
+Færdig. Sådan bruger du det:
 
-  1. Genstart Claude Desktop helt (Cmd+Q, ikke bare luk vinduet)
+  1. Åbn en Claude Code-session i denne mappe ($REPO)
+     (i terminalen: "claude", eller vælg mappen i Claude-appens Claude Code-fane)
 
-  2. Slå skillen til:
-     Settings → Capabilities → slå Code execution og File creation til,
-     og upload derefter under Skills:
-     $REPO/skills/bilka-indkoeb.zip
+  2. Claude Code finder selv .mcp.json og .claude/skills/bilka-indkoeb -
+     du bliver typisk bedt om at godkende projektets MCP-server første gang.
 
-Prøv så i Claude Desktop:  "Hvad ligger der i min Bilka-kurv?"
+  3. Prøv:  "Hvad ligger der i min Bilka-kurv?"
+
+Brugte du i stedet den almindelige chat i Claude-appen, og den ikke finder
+værktøjerne: den udgave af appen understøtter formentlig kun MCP-servere
+den selv hoster (remote), ikke lokale som denne. Claude Code er den
+pålidelige vej indtil videre.
 
 Bestilling er slået fra. Claude kan alt undtagen bruge dit betalingskort.
 ────────────────────────────────────────────────────────────

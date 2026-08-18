@@ -1,4 +1,17 @@
-# Opsætning i Claude Desktop
+# Opsætning i Claude Code
+
+**Denne vejledning bruger Claude Code, ikke Claude-appens almindelige chat.**
+Det er ikke det oprindelige valg — men den nye samlede Claude-app (med
+Cowork og indbygget Claude Code) viste sig ikke at understøtte lokale
+MCP-servere i sin almindelige chat-overflade. `claude_desktop_config.json`
+bliver der ganske enkelt ikke læst; appen har en helt anden indstillingsfil
+med samme navn. Skillen indlæses fint (den er bare tekst), men værktøjerne
+som `get_basket` er der ikke, fordi chatten kun kan tilgå MCP-servere appen
+selv hoster (remote), ikke lokale som denne.
+
+Claude Code har derimod en dokumenteret, filbaseret mekanisme til præcis det
+her — en projekt-`.mcp.json` og en `.claude/skills/`-mappe, som indlæses
+automatisk, når du åbner mappen. Det er det, denne opsætning bruger.
 
 ## Den hurtige vej
 
@@ -9,12 +22,12 @@ cd Bilka
 ```
 
 Scriptet henter afhængigheder (og `uv`, hvis den mangler), beder om dit
-Bilka-login, tester at det virker, og skriver `claude_desktop_config.json`
-for dig. Har du andre MCP-servere i forvejen, bliver de ikke rørt — der tages
-en sikkerhedskopi først.
+Bilka-login, tester at det virker, og skriver en `.mcp.json` i projektmappen.
+Har du en anden `.mcp.json` i forvejen, tages en sikkerhedskopi først.
 
-Bagefter mangler kun to ting, som scriptet ikke kan gøre for dig: genstart
-Claude Desktop helt (Cmd+Q), og upload skillen under Settings → Capabilities.
+Bagefter: åbn en Claude Code-session i mappen (`claude` i terminalen, eller
+vælg mappen i appens Claude Code-fane). Skillen i `.claude/skills/` og
+MCP-serveren i `.mcp.json` bliver fundet automatisk.
 
 Resten af dette dokument er den manuelle vej, og hvad du gør hvis noget
 driller.
@@ -85,14 +98,16 @@ Notér den fulde sti til mappen, den skal bruges lige om lidt:
 pwd     # fx /Users/august/Bilka
 ```
 
-### Redigér config-filen
+### Skriv `.mcp.json`
 
-| System | Sti |
-|---|---|
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+Kopiér skabelonen og udfyld dit login. Filen ligger i projektmappen og er
+gitignored, så den aldrig bliver committet:
 
-Findes filen ikke, så opret den. Indhold:
+```bash
+cp .mcp.json.example .mcp.json
+```
+
+Redigér den til:
 
 ```json
 {
@@ -113,48 +128,40 @@ Findes filen ikke, så opret den. Indhold:
 På Windows hedder Python i venv'en `.venv\Scripts\python.exe`, og stier
 skal skrives med dobbelte backslashes: `C:\\Users\\dig\\Bilka`.
 
-Tre ting der typisk går galt:
+To ting der typisk går galt:
 
 - **Brug fulde stier i både `command` og `cwd`.** Ingen `~`, ingen relative
-  stier. Claude Desktop arver ikke din `PATH`, så en bar `python3` eller
-  `uv` fejler tit med `spawn ENOENT`, selvom den virker i terminalen. Peger
-  du direkte på venv'ens Python, findes den altid.
+  stier. Peg direkte på venv'ens Python — så er den uafhængig af hvilken
+  `PATH` Claude Code starter med.
 - **JSON tåler ikke kommentarer** og heller ikke et komma efter sidste felt.
-- **Genstart programmet helt**, ikke bare vinduet.
 
-Genstart Claude Desktop helt (luk vinduet er ikke nok — afslut programmet).
-Værktøjerne dukker op under værktøjsikonet i chatten.
+Åbn så en Claude Code-session i mappen (`claude` i terminalen, eller vælg
+mappen i appens Claude Code-fane). Første gang bliver du typisk bedt om at
+godkende projektets MCP-server — sig ja. Værktøjerne dukker op i den
+session.
 
 ### Bemærk om kodeordet
 
-Det står i klartekst i config-filen. Filen ligger på din egen maskine og
-forlader den ikke, og det er samme model som alle andre lokale MCP-servere.
-Men det er værd at vide, og filen bør ikke deles eller synkroniseres til et
-delt drev.
+Det står i klartekst i `.mcp.json`. Filen ligger på din egen maskine, er
+gitignored, og forlader ikke maskinen. Men den bør ikke deles eller
+synkroniseres til et delt drev.
 
-Skifter du kodeord hos Bilka, skal det rettes her og Claude Desktop
-genstartes. Serveren logger selv ind igen undervejs, så du skal ikke gøre
-andet.
+Skifter du kodeord hos Bilka, retter du det i `.mcp.json` og starter en ny
+Claude Code-session. Serveren logger selv ind igen undervejs, så du skal
+ikke gøre andet.
 
 ---
 
 ## 2. Skillen
 
-Skills kræver, at **Code execution** og **File creation** er slået til under
-Settings → Capabilities. Ellers indlæses de ikke.
+Claude Code finder selv `.claude/skills/bilka-indkoeb/SKILL.md`, når du
+åbner projektmappen — intet at installere. Den aktiverer sig selv, når
+samtalen handler om indkøb, eller du kan bede om den ved navn.
 
-Pak skillen som zip — mappen skal med, ikke kun filen:
-
-```bash
-cd Bilka/skills
-zip -r bilka-indkoeb.zip bilka-indkoeb
-```
-
-Så: **Settings → Capabilities → Skills → Add**, vælg `bilka-indkoeb.zip`,
-og slå den til.
-
-Claude aktiverer den selv, når samtalen handler om indkøb. Du kan også bare
-sige "brug bilka-indkoeb".
+(Der ligger også en `skills/bilka-indkoeb.zip`, som `setup.sh` pakker, til
+hvis din udgave af Claude-appens almindelige chat en dag understøtter
+lokale MCP-servere og skill-upload samtidig — men det er ikke den
+understøttede vej lige nu.)
 
 ---
 
@@ -182,16 +189,12 @@ udtrykkeligt, og du bliver bedt om at bekræfte totalen først.
 | Symptom | Årsag |
 |---|---|
 | `No matching distribution found for fastmcp` | Python 3.9 — fastmcp kræver 3.10+ |
-| Ingen bilka-værktøjer i chatten | Config'en er ikke læst — tjek JSON-syntaks og genstart helt |
-| `spawn ... ENOENT` | `command` kan ikke findes; skriv fuld sti til `.venv`-Python |
+| Ingen bilka-værktøjer i den almindelige Claude-chat | Den overflade understøtter (endnu) ikke lokale MCP-servere — brug Claude Code i stedet |
+| Ingen bilka-værktøjer i Claude Code | `.mcp.json` mangler, har ugyldig JSON, eller du sagde nej til godkendelsesprompten første gang |
+| `spawn ... ENOENT` | `command` i `.mcp.json` kan ikke findes; skriv fuld sti til `.venv`-Python |
 | `Gigya-login fejlede: Invalid LoginID` | Forkert mail eller kodeord i `env` |
 | Søgning virker, men kurven fejler | Login er problemet, ikke serveren |
-| Skillen aktiveres ikke | Code execution og File creation slået fra |
-
-Serveren skriver fejl til Claude Desktops logfil:
-
-- macOS: `~/Library/Logs/Claude/mcp-server-bilka.log`
-- Windows: `%APPDATA%\Claude\logs\mcp-server-bilka.log`
+| Skillen aktiveres ikke | Du sidder ikke i projektmappen, eller `.claude/skills/bilka-indkoeb/SKILL.md` mangler |
 
 Vil du fejlsøge uden om Claude, så kør CLI'en direkte — samme kode, samme fejl:
 

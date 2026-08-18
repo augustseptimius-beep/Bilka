@@ -12,3 +12,6 @@ session.json
 
 # skill-zip bygges lokalt
 skills/*.zip
+
+# rigtig config med credentials - kun .example skal committes
+.mcp.json
