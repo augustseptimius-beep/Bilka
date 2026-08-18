@@ -25,8 +25,12 @@ $ bilka shop "letmælk:2" "rugbrød" "kaffe"
 ```bash
 git clone https://github.com/augustseptimius-beep/Bilka.git
 cd Bilka
-uv sync --extra mcp
+./setup.sh
 ```
+
+`setup.sh` klarer det hele: afhængigheder, login og
+`claude_desktop_config.json`. Vil du kun bruge CLI'en, er `uv sync --extra mcp`
+nok.
 
 Kræver Python 3.10+ (`fastmcp` findes ikke til 3.9, som macOS stadig leverer).
 Har du ikke `uv`, henter `curl -LsSf https://astral.sh/uv/install.sh | sh` den

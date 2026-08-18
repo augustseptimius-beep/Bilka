@@ -1,5 +1,26 @@
 # Opsætning i Claude Desktop
 
+## Den hurtige vej
+
+```bash
+git clone https://github.com/augustseptimius-beep/Bilka.git
+cd Bilka
+./setup.sh
+```
+
+Scriptet henter afhængigheder (og `uv`, hvis den mangler), beder om dit
+Bilka-login, tester at det virker, og skriver `claude_desktop_config.json`
+for dig. Har du andre MCP-servere i forvejen, bliver de ikke rørt — der tages
+en sikkerhedskopi først.
+
+Bagefter mangler kun to ting, som scriptet ikke kan gøre for dig: genstart
+Claude Desktop helt (Cmd+Q), og upload skillen under Settings → Capabilities.
+
+Resten af dette dokument er den manuelle vej, og hvad du gør hvis noget
+driller.
+
+---
+
 To dele, der løser hver sin halvdel:
 
 - **MCP-serveren** giver Claude hænderne — søge, lægge i kurv, se totalen.
