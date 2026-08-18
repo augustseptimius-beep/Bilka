@@ -28,9 +28,8 @@ cd Bilka
 ./setup.sh
 ```
 
-`setup.sh` klarer det hele: afhængigheder, login og
-`claude_desktop_config.json`. Vil du kun bruge CLI'en, er `uv sync --extra mcp`
-nok.
+`setup.sh` klarer det hele: afhængigheder, login og en projekt-`.mcp.json`
+til Claude Code. Vil du kun bruge CLI'en, er `uv sync --extra mcp` nok.
 
 Kræver Python 3.10+ (`fastmcp` findes ikke til 3.9, som macOS stadig leverer).
 Har du ikke `uv`, henter `curl -LsSf https://astral.sh/uv/install.sh | sh` den
@@ -90,14 +89,17 @@ der tilfældigvis matcher ordet".
 `--sort unit_price` sammenligner kun varer med **samme** enhed (den enhed
 flest træffere bruger), for 0,64 kr/meter er ikke billigere end 9,95 kr/kg.
 
-## Claude Desktop
+## Chat med Claude om indkøb
 
-Vil du bare chatte med Claude om indkøb, er
-[`docs/claude-desktop.md`](docs/claude-desktop.md) den fulde opskrift: MCP-server
-plus `skills/bilka-indkoeb`, som håndhæver kostkrav og sørger for, at der ikke
-bliver bestilt uden dit ja.
+[`docs/claude-desktop.md`](docs/claude-desktop.md) er den fulde opskrift:
+MCP-server plus `.claude/skills/bilka-indkoeb`, som håndhæver kostkrav og
+sørger for, at der ikke bliver bestilt uden dit ja.
 
-Kort fortalt: MCP giver Claude hænderne, skillen giver dømmekraften.
+Det kører via **Claude Code**, ikke Claude-appens almindelige chat — den nye
+samlede Claude-app (med Cowork indbygget) understøtter endnu ikke lokale
+MCP-servere i sin chat-overflade, kun Claude Code gør. Kort fortalt: MCP
+giver Claude hænderne, skillen giver dømmekraften, `./setup.sh` klarer
+opsætningen.
 
 ## MCP-server
 
@@ -107,8 +109,8 @@ Så en assistent kan handle for dig:
 uv run --extra mcp server.py
 ```
 
-I `~/.claude.json` eller projektets `.mcp.json`. Peg på venv'ens Python med
-fuld sti — MCP-klienter arver ikke altid din `PATH`, så en bar `uv` eller
+I projektets `.mcp.json` (det er den `setup.sh` skriver). Peg på venv'ens
+Python med fuld sti — MCP-klienter arver ikke altid din `PATH`, så en bar `uv` eller
 `python3` fejler tit med `spawn ENOENT`:
 
 ```json
