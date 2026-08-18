@@ -92,14 +92,21 @@ flest træffere bruger), for 0,64 kr/meter er ikke billigere end 9,95 kr/kg.
 ## Chat med Claude om indkøb
 
 [`docs/claude-desktop.md`](docs/claude-desktop.md) er den fulde opskrift:
-MCP-server plus `.claude/skills/bilka-indkoeb`, som håndhæver kostkrav og
-sørger for, at der ikke bliver bestilt uden dit ja.
+MCP-server plus `.claude/skills/bilka-indkoeb`, som spørger til dine kostkrav
+første gang og sørger for, at der ikke bliver bestilt uden dit ja.
 
-Det kører via **Claude Code**, ikke Claude-appens almindelige chat — den nye
-samlede Claude-app (med Cowork indbygget) understøtter endnu ikke lokale
-MCP-servere i sin chat-overflade, kun Claude Code gør. Kort fortalt: MCP
-giver Claude hænderne, skillen giver dømmekraften, `./setup.sh` klarer
-opsætningen.
+Kort fortalt: MCP giver Claude hænderne, skillen giver dømmekraften, og
+`./setup.sh` klarer opsætningen. Der er to veje, og begge virker:
+
+| Vej | Hvordan | Passer til |
+|---|---|---|
+| **Claude Code** | `.mcp.json` i projektmappen, indlæses automatisk | Virker altid, ingen installation |
+| **`.mcpb`-extension** | Settings → Extensions → Install Extension | Den almindelige chat i Claude-appen |
+
+`setup.sh` bygger begge dele i samme kørsel.
+
+**Settings → Connectors er derimod ikke en vej** — det felt kræver en
+HTTPS-URL og er kun til fjernservere, ikke lokale som denne.
 
 ## MCP-server
 
@@ -153,6 +160,33 @@ Lad nummer to være slået fra indtil du har set kurven med dine egne øjne.
 Alt andet — søgning, kurv, levering — er harmløst og kan altid rulles tilbage
 på hjemmesiden.
 
+## Sikkerhed og hemmeligheder
+
+Hvad der ligger hvor, og hvorfor:
+
+| Hvad | Hvor | Beskyttelse |
+|---|---|---|
+| Dit kodeord | `.mcp.json` (Claude Code) eller Claudes egen sikre opbevaring (`.mcpb`) | `.mcp.json` er gitignored og skrives med `0600`; `.mcpb`-vejen skriver det aldrig til disk |
+| Session (JWT + cookie) | `~/.config/bilka-cli/session.json` | Oprettes med `0600` fra starten, udløber efter en time |
+| Algolia- og Gigya-nøgler | Hardkodet i `bilka_cli.py` | Ikke hemmeligheder — de ligger i klartekst i Bilkas egen frontend og er kun søge- og login-nøgler, ikke adgang til din konto |
+
+**`.mcpb`-vejen er den sikreste**, fordi kodeordet indsamles af Claudes egen
+installationsdialog og aldrig havner i en fil, dette projekt skriver.
+
+Tre ting værd at vide:
+
+- Der er **ingen adgangskontrol mellem Claude og din konto** ud over det, der
+  står i skillen. Serveren kan lægge i kurv og læse dine ordrer, så længe den
+  kører. `checkout` er den eneste handling, der koster penge, og den er
+  spærret to steder (se nedenfor).
+- Klienten **verificerer TLS** og sender kun til `bilkatogo.dk`,
+  `accounts.eu1.gigya.com` og Algolia. Intet går andre steder hen.
+- Kører du `bilka_cli.py` direkte i en terminal med `export BILKA_PASSWORD=...`,
+  havner kodeordet i din shell-historik. `./setup.sh` undgår det ved at læse
+  det skjult.
+
+Fandt du et sikkerhedsproblem, så åbn et issue — eller bare en PR.
+
 ## Arkitektur
 
 Alt klientlogik ligger i `bilka_cli.py`. `server.py` eksponerer det kun som
@@ -180,5 +214,14 @@ indkøbslister, favoritter, leveringstider, ordrehistorik og profil.
 `checkout` er som det eneste ikke kørt igennem — det ville koste penge.
 
 Endpointene er reverse engineered fra frontendens JavaScript. Der er intet
-officielt API, så det kan holde op med at virke uden varsel. Projektet er
-ikke tilknyttet Salling Group.
+officielt API, så det kan holde op med at virke uden varsel.
+
+## Licens og ansvar
+
+[MIT](LICENSE) — brug det til hvad du vil.
+
+Projektet er **ikke tilknyttet Salling Group eller Bilka**. Det taler med et
+udokumenteret API, som Bilka kan lukke eller ændre uden varsel, og licensen
+dækker koden her — ikke en tilladelse fra Bilka til at bruge deres API. Brug
+det til din egen konto og dine egne indkøb, og lad være med at hamre løs på
+deres servere.

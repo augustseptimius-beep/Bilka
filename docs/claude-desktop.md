@@ -1,17 +1,15 @@
-# Opsætning i Claude Code
+# Opsætning
 
-**Denne vejledning bruger Claude Code, ikke Claude-appens almindelige chat.**
-Det er ikke det oprindelige valg — men den nye samlede Claude-app (med
-Cowork og indbygget Claude Code) viste sig ikke at understøtte lokale
-MCP-servere i sin almindelige chat-overflade. `claude_desktop_config.json`
-bliver der ganske enkelt ikke læst; appen har en helt anden indstillingsfil
-med samme navn. Skillen indlæses fint (den er bare tekst), men værktøjerne
-som `get_basket` er der ikke, fordi chatten kun kan tilgå MCP-servere appen
-selv hoster (remote), ikke lokale som denne.
+Der er to veje, og de virker begge. `setup.sh` bygger begge i samme kørsel:
 
-Claude Code har derimod en dokumenteret, filbaseret mekanisme til præcis det
-her — en projekt-`.mcp.json` og en `.claude/skills/`-mappe, som indlæses
-automatisk, når du åbner mappen. Det er det, denne opsætning bruger.
+| Vej | Hvordan | Bemærk |
+|---|---|---|
+| **Claude Code** | `.mcp.json` i projektmappen | Indlæses automatisk, ingen installation |
+| **`.mcpb`-extension** | Settings → Extensions → Install Extension… | Virker i den almindelige chat |
+
+**Settings → Connectors er ikke en mulighed.** Det felt kræver en
+`Remote MCP server URL` over HTTPS og er kun til servere, der kører på
+nettet — ikke en lokal som denne.
 
 ## Den hurtige vej
 
@@ -160,12 +158,11 @@ samtalen handler om indkøb, eller du kan bede om den ved navn.
 
 ---
 
-## 4. Eller: .mcpb-extension til den almindelige chat
+## 3. Eller: .mcpb-extension til den almindelige chat
 
-Har din app **Settings → Extensions** (tjek der, ikke Connectors — Connectors
-kræver en HTTPS-URL og er kun til fjernservere), findes der en anden vej:
-`setup.sh` bygger også `bilka-to-go.mcpb`, en installerbar pakke til præcis
-den overflade.
+Vil du bruge det i den almindelige chat i stedet for Claude Code, bygger
+`setup.sh` også `bilka-to-go.mcpb` — en installerbar pakke til netop den
+overflade. Den findes under **Settings → Extensions** (ikke Connectors).
 
 Dobbeltklik filen, eller **Settings → Extensions → Advanced settings →
 Install Extension…**. Installationsdialogen beder om din Bilka-mail og
@@ -179,8 +176,8 @@ denne ene sti — kør `./setup.sh` igen, hvis du flytter eller kloner mappen
 et andet sted, så pakkes den til den nye sti.
 
 Skillen er ikke inde i `.mcpb`-filen (kun MCP-serveren er). Vil du have den
-med i den almindelige chat, skal den uploades separat som en zip, hvis din
-app har et tilsvarende Skills-panel under Capabilities:
+med i den almindelige chat, skal den uploades separat under
+Settings → Capabilities → Skills som en zip:
 
 ```bash
 cd .claude/skills && zip -r ../../skills.zip bilka-indkoeb
@@ -188,7 +185,7 @@ cd .claude/skills && zip -r ../../skills.zip bilka-indkoeb
 
 ---
 
-## 3. Prøv det
+## 4. Prøv det
 
 ```
 Hvad ligger der i min Bilka-kurv?
@@ -212,7 +209,7 @@ udtrykkeligt, og du bliver bedt om at bekræfte totalen først.
 | Symptom | Årsag |
 |---|---|
 | `No matching distribution found for fastmcp` | Python 3.9 — fastmcp kræver 3.10+ |
-| Ingen bilka-værktøjer i den almindelige Claude-chat | Den overflade understøtter (endnu) ikke lokale MCP-servere — brug Claude Code i stedet |
+| Ingen bilka-værktøjer i den almindelige chat | Extensionen er ikke installeret — se afsnit 3. Connectors virker ikke til lokale servere |
 | Ingen bilka-værktøjer i Claude Code | `.mcp.json` mangler, har ugyldig JSON, eller du sagde nej til godkendelsesprompten første gang |
 | `spawn ... ENOENT` | `command` i `.mcp.json` kan ikke findes; skriv fuld sti til `.venv`-Python |
 | `Gigya-login fejlede: Invalid LoginID` | Forkert mail eller kodeord i `env` |

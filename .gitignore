@@ -16,3 +16,6 @@ skills/*.zip
 # rigtig config med credentials - kun .example skal committes
 .mcp.json
 bilka-to-go.mcpb
+
+# personlige praeferencer til skillen - bevidst ikke i git
+.claude/skills/*/mine-praeferencer.md

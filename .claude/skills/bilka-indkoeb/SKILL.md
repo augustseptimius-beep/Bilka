@@ -8,35 +8,43 @@ description: Handel ind hos Bilka To Go via bilka-MCP-serveren. Brug den når br
 Værktøjerne kommer fra `bilka`-MCP-serveren (`search_products`, `add_to_basket`,
 `get_basket`, `add_shopping_list`, `reorder`, `checkout` m.fl.).
 
-> **Tilpas dette afsnit til din egen husstand.** Kostkrav og faste varer
-> herunder er eksempler, der viser mønstret — ikke noget der passer til
-> alle. Erstat dem med dine egne, før du bruger skillen i praksis.
+## Først: kend husstandens krav
+
+Præferencer og kostkrav ligger i `mine-praeferencer.md` ved siden af denne
+fil. Den er bevidst holdt uden for git, så den er personlig og overlever
+opdateringer af skillen.
+
+**Findes filen ikke, så spørg brugeren, før du handler ind første gang.**
+Spørg kort og konkret om:
+
+1. **Allergier eller kostkrav** der gør en vare direkte ubrugelig, hvis de
+   brydes — fx glutenfri, laktosefri, nøddeallergi, halal, vegansk.
+2. **Præferencer** der må vige for pris og tilgængelighed — fx økologisk,
+   bestemte mærker, undgå bestemte mærker.
+3. **Faste varer** der altid skal genkøbes uden at spørge.
+4. Om der er **børn eller andre i husstanden** med særlige varer (ble- eller
+   tøjstørrelser, specialkost).
+
+Tilbyd derefter at gemme svarene i `mine-praeferencer.md`, og læs den filen
+fremover i stedet for at spørge igen. Er der noget, brugeren ikke svarer på,
+så lad være med at gætte — spørg hellere, når det bliver relevant for en
+konkret vare.
 
 ## Kostkrav — det vigtigste
 
-Skeln mellem helbredskrav og smagssager. Bliver et helbredskrav brudt, er
-varen ubrugelig, ikke bare ikke-optimal — så eksemplet herunder viser hvor
-strengt den slags skal håndhæves:
+Skeln mellem to slags. Et **helbredskrav** gør varen ubrugelig, hvis det
+brydes — ikke bare mindre god. En **præference** må vige for pris og
+tilgængelighed. Behandl alt fra spørgsmål 1 ovenfor som helbredskrav.
 
-- *Eksempel:* **Glutenfri.** Alt med hvede, rug, byg, spelt, havre uden
-  glutenfri-mærkning.
-- *Eksempel:* **Laktosefri** for mejeriprodukter: mælk, yoghurt, fløde, blød
-  ost, smøreost. Lagret hård ost er i praksis laktosefri og går an, men vælg
-  det mærkede produkt hvis begge dele findes.
+**Verificér, gæt ikke.** Bilkas søgning matcher løst — en søgning på "smør"
+kan give havregryn. Læs `name` og `description` på det produkt du vælger, og
+tjek at kravet faktisk er opfyldt. Står der ikke udtrykkeligt "glutenfri" på
+et produkt, hvor det er påkrævet, så antag at det ikke er det. Kan du ikke
+bekræfte det, så læg varen til side og spørg i stedet for at gætte.
 
-**Verificér, gæt ikke — uanset hvilke krav du sætter op.** Bilkas søgning
-matcher løst — en søgning på "smør" kan give havregryn. Læs `name` og
-`description` på det produkt du vælger, og tjek at kravet faktisk er opfyldt.
-Kan du ikke bekræfte det, så læg varen til side og spørg i stedet for at
-gætte.
-
-Præferencer, som må vige for pris og tilgængelighed (også eksempler):
-
-- **Økologisk** foretrækkes klart — søg `"<vare> øko"` først.
-- **Plantetungt**, men ikke veganer: tofu og plantepostej ja, men også ost,
-  yoghurt og feta.
-- Faste varer, der altid skal genkøbes uden at blive spurgt om — fx
-  husholdningsartikler eller noget et husstandsmedlem bruger fast.
+Et par nyttige detaljer: lagret hård ost er i praksis laktosefri, selv uden
+mærkning, mens havre kun er glutenfri hvis der står det (den forurenes
+typisk under forarbejdning).
 
 ## Fremgangsmåde
 

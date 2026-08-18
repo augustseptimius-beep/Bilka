@@ -263,9 +263,25 @@ class BilkaClient:
             "jwt": self._jwt,
             "cookies": {c.name: c.value for c in self.session.cookies},
         }
+        # Filen indeholder en levende JWT og sessionscookie. Den skal
+        # oprettes med 0600 fra starten - skriver man foerst og strammer
+        # bagefter, ligger indholdet aabent i vinduet imellem.
         try:
-            self.session_file.write_text(json.dumps(payload))
-            self.session_file.chmod(0o600)
+            fd = os.open(
+                self.session_file,
+                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                0o600,
+            )
+            try:
+                with os.fdopen(fd, "w") as fh:
+                    json.dump(payload, fh)
+            finally:
+                # Havde filen allerede loesere rettigheder, retter O_CREAT
+                # dem ikke - saet dem eksplicit.
+                try:
+                    self.session_file.chmod(0o600)
+                except OSError:
+                    pass
         except OSError:
             pass  # cache er en optimering, ikke et krav
 
