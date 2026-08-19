@@ -27,6 +27,10 @@ Bagefter: åbn en Claude Code-session i mappen (`claude` i terminalen, eller
 vælg mappen i appens Claude Code-fane). Skillen i `.claude/skills/` og
 MCP-serveren i `.mcp.json` bliver fundet automatisk.
 
+Første gang du beder om hjælp til indkøb, spørger Claude til dine kostkrav og
+tilbyder at gemme dem i din egen `mine-praeferencer.md`. Se
+[afsnit 3](#3-dine-egne-præferencer) hvis du hellere vil skrive den selv.
+
 Resten af dette dokument er den manuelle vej, og hvad du gør hvis noget
 driller.
 
@@ -158,7 +162,75 @@ samtalen handler om indkøb, eller du kan bede om den ved navn.
 
 ---
 
-## 3. Eller: .mcpb-extension til den almindelige chat
+## 3. Dine egne præferencer
+
+Skillen kender ikke din husstand. Den leder efter en fil ved siden af
+`SKILL.md`:
+
+```
+.claude/skills/bilka-indkoeb/mine-praeferencer.md
+```
+
+Filen er **gitignored** (`.gitignore` linje 21). Den ryger ikke med når du
+pusher, og den bliver liggende når du henter opdateringer til projektet. Dine
+kostkrav og vaner er dine egne — de hører ikke hjemme i et offentligt repo.
+
+### Sådan kommer du i gang
+
+Du behøver ikke skrive den selv. Findes filen ikke, spørger Claude til dine
+kostkrav første gang du beder om hjælp til indkøb, og tilbyder at gemme
+svarene. Det er den nemmeste vej.
+
+Vil du hellere skrive den i hånden, er her en skabelon at klippe i:
+
+```markdown
+# Mine indkøbspræferencer
+
+## Husstanden
+- 2 voksne og et barn på 3 år.
+- Vi handler ca. 2 gange om ugen.
+
+## Kostkrav — hårde krav, verificér altid
+- Glutenfri: gælder hele husstanden.
+- Nøddeallergi: gælder mit barn. Også spor af nødder.
+
+## Præferencer — må vige for pris og tilgængelighed
+- Økologi når merprisen er rimelig.
+- Helst dansk kød.
+
+## Faste varer — "det sædvanlige"
+| Vare | Pr. md |
+|---|---|
+| Havregryn øko | 2 |
+| Bananer | 8 |
+| Kaffe, mørkristet | 1 |
+| Toiletpapir 8 rl | 1 |
+
+## Spørg altid før du køber
+- Kød ud over det faste.
+- Alkohol.
+```
+
+### Hvad der gør den nyttig
+
+Tre ting betaler sig at få med:
+
+- **Skeln mellem krav og præferencer.** Et helbredskrav gør varen ubrugelig
+  hvis det brydes; en præference må vige for prisen. Skillen behandler de to
+  slags forskelligt, så skriv hvilken slags det er.
+- **Skriv hvem kravet gælder.** "Kun min ene datter skal have det nøddefri"
+  giver bedre indkøb end bare "nøddefri", fordi det så kun er hendes varer og
+  fællesvarerne der skal tjekkes — ikke hele kurven.
+- **Sæt mængder på de faste varer.** Så kan du nøjes med at sige *"læg det
+  sædvanlige i kurven"*, og Claude ved hvor meget der skal til.
+
+Har du dine kvitteringer digitalt — fx eksporteret fra en kvitterings-app —
+kan du give dem til Claude og bede om at få listen udledt af dem. Så bliver
+mængderne dine faktiske, ikke dine gættede.
+
+---
+
+## 4. Eller: .mcpb-extension til den almindelige chat
 
 Vil du bruge det i den almindelige chat i stedet for Claude Code, bygger
 `setup.sh` også `bilka-to-go.mcpb` — en installerbar pakke til netop den
@@ -185,7 +257,7 @@ cd .claude/skills && zip -r ../../skills.zip bilka-indkoeb
 
 ---
 
-## 4. Prøv det
+## 5. Prøv det
 
 ```
 Hvad ligger der i min Bilka-kurv?

@@ -108,6 +108,19 @@ Kort fortalt: MCP giver Claude hænderne, skillen giver dømmekraften, og
 **Settings → Connectors er derimod ikke en vej** — det felt kræver en
 HTTPS-URL og er kun til fjernservere, ikke lokale som denne.
 
+### Dine egne præferencer
+
+Skillen leder efter `mine-praeferencer.md` ved siden af `SKILL.md`. Den følger
+**ikke** med i git — den er din, og den bliver liggende når du opdaterer
+projektet.
+
+Findes filen ikke, spørger Claude til dine kostkrav første gang du handler.
+Du kan også skrive den selv. Den er almindelig tekst, og der er en skabelon i
+[`docs/claude-desktop.md`](docs/claude-desktop.md#3-dine-egne-præferencer).
+
+Det er her det bliver rart at bruge: skriver du dine faste varer ind med
+mængder, kan du nøjes med at sige *"læg det sædvanlige i kurven"*.
+
 ## MCP-server
 
 Så en assistent kan handle for dig:
